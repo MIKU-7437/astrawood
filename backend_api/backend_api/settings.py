@@ -73,26 +73,26 @@ WSGI_APPLICATION = 'backend_api.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'astrawood',
-        'USER': 'postgres',
-        'PASSWORD': 'admin',
-        'HOST': 'localhost',
-        'PORT': '5432',
-    }
-}
 # DATABASES = {
 #     'default': {
 #         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': os.environ.get('POSTGRES_DB', 'railway'),
-#         'USER': os.environ.get('POSTGRES_USER', 'postgres'),
-#         'PASSWORD': os.environ.get('POSTGRES_PASSWORD', '35-*D63DEBC4bFB62F5gc*4E4-c5ef*d'),
-#         'PORT': os.environ.get('POSTGRES_PORT', 32441),
-#         'HOST': os.environ.get('POSTGRES_HOST', 'roundhouse.proxy.rlwy.net'),
+#         'NAME': 'astrawood',
+#         'USER': 'postgres',
+#         'PASSWORD': 'admin',
+#         'HOST': 'localhost',
+#         'PORT': '5432',
 #     }
 # }
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.environ.get('POSTGRES_DB', 'railway'),
+        'USER': os.environ.get('POSTGRES_USER', 'postgres'),
+        'PASSWORD': os.environ.get('POSTGRES_PASSWORD', '35-*D63DEBC4bFB62F5gc*4E4-c5ef*d'),
+        'PORT': os.environ.get('POSTGRES_PORT', 32441),
+        'HOST': os.environ.get('POSTGRES_HOST', 'roundhouse.proxy.rlwy.net'),
+    }
+}
 
 
 # Password validation
