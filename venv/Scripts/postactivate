@@ -1,0 +1,1 @@
+export PATH="C:\Program Files\PostgreSQL\15\bin:$PATH"
