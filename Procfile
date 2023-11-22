@@ -1,1 +1,1 @@
-web: sh -c 'cd backend_api && python manage.py migrate && python manage.py collectstatic --noinput && gunicorn gen_zone.wsgi:application'
+web: sh -c 'cd backend_api && python manage.py migrate && python manage.py collectstatic --noinput && gunicorn backend_api.wsgi:application'
