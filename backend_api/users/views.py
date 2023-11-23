@@ -4,6 +4,8 @@ from .utils import Util
 from rest_framework import status, generics, viewsets, permissions, mixins
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.core.exceptions import ValidationError
+from rest_framework_simplejwt.views import TokenObtainPairView
+from .serializers import CustomTokenObtainPairSerializer
 
 from rest_framework.response import Response
 from rest_framework.decorators import action
@@ -24,6 +26,24 @@ class RegisterView(viewsets.GenericViewSet):
     serializer_class = RegisterSerializer
 
     def post(self, request):
+        """
+        RegisterView (Регистрация нового пользователя):
+
+        Описание: Регистрирует нового пользователя в системе и отправляет электронное письмо для подтверждения адреса электронной почты.
+        без активации через почту не получится зайти в аккаунт
+        Параметры:
+        first_name (обязательный): Имя пользователя.
+        last_name (обязательный): Фамилия пользователя.
+        email (обязательный): Адрес электронной почты пользователя. (также есть проверка на уникальность)
+        password (обязательный): Пароль пользователя.
+        password_conf (обязательный): Подтверждение пароля пользователя.
+        city (обязательный)
+        region (обязательный)
+        address (обязательный)
+        phone (обязательный) (также есть проверка на уникальность)
+        Ответ:
+        user_data: Данные пользователя.
+        """
         # Получение пароля и его подтверждения из запроса
         password = request.data.get('password')
         password_conf = request.data.get('password_conf')
@@ -61,10 +81,36 @@ class RegisterView(viewsets.GenericViewSet):
         # Возврат ответа с данными пользователя и токеном доступа
         return Response({'user_data': user, 'access_token': str(token)}, status=status.HTTP_201_CREATED)
 
+    @action(detail=False, methods=['post'], name='check_status')
+    def check_status(self, request):
+        """
+        Описание: Проверяет статус подтверждения адреса электронной почты для указанного пользователя.
+        Параметры:
+        email (обязательный): Адрес электронной почты пользователя.
+        Ответ:
+        status: Статус подтверждения (verified - подтверждено, error - не подтверждено).
+        """
+        email = request.data.get('email')
+        user = User.objects.get(email=email)
+        if user:
+            if user.is_active:
+                return Response({'status':"verified"})
+            else:
+                return Response({'error':f"User with email {email} is not activated yet"})
+        else:
+            return Response({'error':f"User with email {email} was not found"})
 
     # Функция для повторной отправки токена, если истечет время
     @action(detail=False, methods=['post'], name='get_another_mail')
     def getAnotherMail(self, request):
+        """
+        Метод: POST
+        Описание: Повторно отправляет токен подтверждения адреса электронной почты для указанного пользователя.
+        Параметры:
+        email (обязательный): Адрес электронной почты пользователя.
+        Ответ:
+        email: Адрес электронной почты пользователя.
+        """
         try:
             # Проверка корректности и наличия email в базе данных
             email = request.data.get('email')
@@ -102,10 +148,17 @@ class RegisterView(viewsets.GenericViewSet):
         
 
 class VerifyEmailView(generics.GenericAPIView):
+    
     serializer_class = EmailVerificationSerializer
 
     def get(self, request):
-
+        """
+        Описание: Подтверждает адрес электронной почты пользователя по токену, отправленному на почту.
+        Параметры:
+        token (в параметрах запроса): Токен подтверждения.
+        Ответ:
+        email: Статус успешного подтверждения.
+        """
         # Получение токена из параметра запроса
         token = request.GET.get('token')
 
@@ -132,7 +185,17 @@ class VerifyEmailView(generics.GenericAPIView):
             # Обработка исключения невозможности декодирования токена
             return Response({'error': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)
 
-
+class CustomTokenObtainPairView(TokenObtainPairView):
+    """
+    Описание: логин пользователя по его данным входа
+    Параметры:
+    почта (обязательное)
+    пароль (обязательное)
+    Ответ:
+    пара токенов access и refresh
+    данные пользователя
+    """
+    serializer_class = CustomTokenObtainPairSerializer
 #Testing logic
 class UserDetailView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -143,6 +206,13 @@ class UserDetailView(APIView):
         return obj
     # Функция которая будет срабатывать только на GET-запросы(возващает только один аккаунт)
     def get(self, request):
+        """"
+        Логика для работы с аккаунтом (нужно предоставить access токен):
+
+        Описание: Получает данные аутентифицированного пользователя.
+        для работы с эндпоинтом, нужно предоставить access токен
+        Ответ: Данные пользователя
+        """
         # Получение объекта пользователя
         user = self.get_object()
         # Сериализация и возврат данных пользователя
@@ -152,6 +222,22 @@ class UserDetailView(APIView):
 
     # Функция которая будет срабатывать только на PUT-запросы(обновить данные и пользователе)
     def put(self, request):
+        """
+        Описание: Обновляет данные аутентифицированного пользователя.
+        Параметры которые можно редактировать:
+        first_name (необязательный)
+        last_name (необязательный)
+        photo (необязательный)
+        city (необязательный)
+        region (необязательный)
+        address (необязательный)
+        phone (необязательный)
+        не редактируются:
+        username - полное имя пользователя, состоит из first_name и last_name
+        email
+        password
+        Ответ: Обновленные данные пользователя.
+        """
         # Получение объекта пользователя по email
         user = self.get_object()
 
@@ -169,6 +255,11 @@ class UserDetailView(APIView):
 
     #TESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTEST
     def delete(self, request,format=None):
+        """
+        (тестовая функция)
+        Описание: просто удаляет аутентифицированного пользователя.
+        Ответ: Сообщение об успешном удалении.
+        """
         # Получение объекта пользователя
         user = self.get_object()
 
@@ -187,6 +278,9 @@ class AllUsersView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
+        """
+        Тестовая функция вообще бесполезная
+        """
         # Получение всех пользователей
         users = User.objects.all()
 
@@ -196,33 +290,41 @@ class AllUsersView(APIView):
 
 
 class ChangePasswordView(generics.UpdateAPIView):
-        serializer_class = ChangePasswordSerializer
-        model = User
-        permission_classes = (permissions.IsAuthenticated,)
-        authentication_classes =[JWTAuthentication]
+    """
+    Описание: Изменяет пароль пользователя.
+    (Пока без подтверждения через почту скоро добавлю)
+    Параметры:
+    old_password (обязательный): Текущий пароль пользователя.
+    new_password (обязательный): Новый пароль пользователя.
+    Ответ: Сообщение об успешном обновлении пароля.
+    """
+    serializer_class = ChangePasswordSerializer
+    model = User
+    permission_classes = (permissions.IsAuthenticated,)
+    authentication_classes =[JWTAuthentication]
 
-        def get_object(self, queryset=None):
-            obj = self.request.user
-            return obj
+    def get_object(self, queryset=None):
+        obj = self.request.user
+        return obj
 
-        def update(self, request, *args, **kwargs):
-            self.object = self.get_object()
-            serializer = self.get_serializer(data=request.data)
+    def update(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        serializer = self.get_serializer(data=request.data)
 
-            if serializer.is_valid():
-                # Check old password
-                if not self.object.check_password(serializer.data.get("old_password")):
-                    return Response({"old_password": ["Wrong password."]}, status=status.HTTP_400_BAD_REQUEST)
-                # set_password also hashes the password that the user will get
-                self.object.set_password(serializer.data.get("new_password"))
-                self.object.save()
-                response = {
-                    'status': 'success',
-                    'code': status.HTTP_200_OK,
-                    'message': 'Password updated successfully',
-                    'data': []
-                }
+        if serializer.is_valid():
+            # Check old password
+            if not self.object.check_password(serializer.data.get("old_password")):
+                return Response({"old_password": ["Wrong password."]}, status=status.HTTP_400_BAD_REQUEST)
+            # set_password also hashes the password that the user will get
+            self.object.set_password(serializer.data.get("new_password"))
+            self.object.save()
+            response = {
+                'status': 'success',
+                'code': status.HTTP_200_OK,
+                'message': 'Password updated successfully',
+                'data': []
+            }
 
-                return Response(response)
+            return Response(response)
 
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

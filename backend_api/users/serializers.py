@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import User
 from django.contrib.auth.hashers import make_password
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 class UserSerializer(serializers.ModelSerializer):
     # Сериализатор для модели User, используемый для преобразования данных пользователя
@@ -19,7 +20,7 @@ class UserSerializer(serializers.ModelSerializer):
             "phone",
             "photo"
         ]
-    
+        # fields = '__all__'
         # Установка полей только для чтения(не меняются)
         read_only_fields = ('email', 'username')
 
@@ -65,6 +66,27 @@ class EmailVerificationSerializer(serializers.ModelSerializer):
         model = User
         # Поля, которые будут включены в сериализацию
         fields = ['token']
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        
+        # Include additional user data in the response
+        data['user'] = {
+            'id': self.user.id,
+            'email': self.user.email,
+            'first_name': self.user.first_name,
+            'last_name': self.user.last_name,
+            "username": self.user.username,
+            'photo': str(self.user.photo) if self.user.photo else None,
+            "city": self.user.city,
+            "region": self.user.region,
+            "address": self.user.address,
+            "phone": self.user.phone,
+        }
+    
+
+        return data
 
 
 class ChangePasswordSerializer(serializers.Serializer):
